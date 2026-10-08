@@ -30,7 +30,8 @@ class Process implements Runnable {
     private int timeQuantum; // Time slice (time quantum) allowed per CPU access (in milliseconds)
     private int remainingTime; // Time left for the process to finish its execution
     private int priority; // Feature 1
-
+    private long creationTime;   // Feature 3
+    private long completionTime; // Feature 3
     // Constructor to initialize the process with name, burst time, and time quantum
     public Process(String name, int burstTime, int timeQuantum, int priority) {
         this.name = name;
@@ -38,6 +39,7 @@ class Process implements Runnable {
         this.timeQuantum = timeQuantum;
         this.remainingTime = burstTime; // Initially, remaining time is equal to the burst time
         this.priority = priority; // Feature 1
+        this.creationTime = System.currentTimeMillis(); // Feature 3
     }
 
     // This method will be called when the thread for this process is started
@@ -87,6 +89,7 @@ class Process implements Runnable {
                               " yields CPU for context switch" + Colors.RESET);
         } else {
             // If no time is left, the process has finished its execution
+            this.completionTime = System.currentTimeMillis(); // Feature 3
             System.out.println(Colors.BRIGHT_GREEN + "  ✓ " + Colors.BOLD + Colors.CYAN + name + 
                               Colors.RESET + Colors.BRIGHT_GREEN + " finished execution!" + 
                               Colors.RESET);
@@ -146,6 +149,14 @@ class Process implements Runnable {
     public boolean isFinished() {
         return remainingTime <= 0;
     }
+
+    public long getTurnaroundTime() { 
+        return completionTime - creationTime; 
+    } // Feature 3
+
+    public long getWaitingTime() { 
+        return getTurnaroundTime() - burstTime; 
+    } // Feature 3
 }
 
 
@@ -199,12 +210,13 @@ public class SchedulerSimulation {
                           Colors.RESET + "\n");
         
         // Create 'numProcesses' number of processes
+        java.util.List<Process> allProcesses = new java.util.ArrayList<>(); //  Feature 3
         for (int i = 1; i <= numProcesses; i++) {
             // Random burst time for each process between timeQuantum/2 and 3*timeQuantum
             int burstTime = timeQuantum/2 + random.nextInt(2 * timeQuantum + 1);
             int priority = 1 + random.nextInt(10); // Feature 1
             Process process = new Process("P" + i, burstTime, timeQuantum, priority);
-            
+            allProcesses.add(process); // Feature 3
             // Add the process to the ready queue and the map
             addProcessToQueue(process, processQueue, processMap);
         }
@@ -283,7 +295,15 @@ public class SchedulerSimulation {
                           "╚════════════════════════════════════════════════════════════════════════════════╝" + 
                           Colors.RESET + "\n");
         System.out.println(Colors.BOLD + Colors.YELLOW + "Total context switches: " + contextSwitchCount + Colors.RESET + "\n"); // Feature 2
-        }
+        // Feature 3: Summary Table Output
+System.out.println(Colors.BOLD + Colors.CYAN + "═════════════════════════════════════════════════════════════════════════" + Colors.RESET);
+System.out.println(Colors.BOLD + Colors.BRIGHT_WHITE + String.format("%-15s %-15s %-15s %-20s", "Process Name", "Burst Time(ms)", "Waiting Time", "Turnaround Time") + Colors.RESET);
+System.out.println(Colors.BOLD + Colors.CYAN + "─────────────────────────────────────────────────────────────────────────" + Colors.RESET);
+for (Process p : allProcesses) {
+    System.out.println(String.format("%-15s %-15d %-15d %-20d", p.getName(), p.getBurstTime(), p.getWaitingTime(), p.getTurnaroundTime()));
+}
+System.out.println(Colors.BOLD + Colors.CYAN + "═════════════════════════════════════════════════════════════════════════" + Colors.RESET + "\n");
+    }
     
     // Method to add a process to the queue and map, while printing a "ready" message
     public static void addProcessToQueue(Process process, Queue<Thread> processQueue, 
